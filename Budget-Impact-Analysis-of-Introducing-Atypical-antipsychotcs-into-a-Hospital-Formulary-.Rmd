@@ -1,0 +1,121 @@
+---
+title: "Budget Impact Analysis of introducing Atypical antipsychotics"
+author: "Joshua Edefo"
+date: "2024-08-26"
+email: "edefojoshua2000@yahoo.com"
+output: github_document
+---
+Libraries
+
+```{r s, message=FALSE}
+library(ggplot2)
+library(usethis)
+```
+Parameters:
+Population Size: Mean = 2000, SD = 500
+Typical Antipsychotics (old drug) Cost: Mean = NGN 1000, SD = NGN 250
+Atypical Antipsychotics (new drug) Cost: Mean = NGN 6000, SD = NGN 1500
+Currency: NGN (Nigerian Naira)
+Time_horizon =  5 years (2016 -2020)
+Yearly market share growth = 5%
+
+```{r b}
+
+#Set the number of simulations
+
+n_simulations <- 10000
+
+# Set the specific years for the time horizon
+years <- c(2016, 2017, 2018, 2019, 2020)
+
+# Define input distributions
+set.seed(123)  # For reproducibility
+
+# Yearly market share growth
+market_share_growth_rate <- 1.05  # 5% growth in market share each year (you can adjust this)
+
+# Initialize lists to store yearly budget impacts
+budget_impact_per_year <- list()
+
+for (year_index in 1:length(years)) {
+  # Simulate population size for each year
+  population_size <- rnorm(n_simulations, mean = 2000, sd = 500)  # Normal distribution for patient #population
+  
+  # Simulate market share for Drug B (increases yearly)
+  market_share_B <- rbeta(n_simulations, shape1 = 3, shape2 = 7) * (market_share_growth_rate ^ (year_index - 1))
+  
+  # Simulate costs for Drug A (typical antipsychotics) and Drug B (atypical antipsychotics)
+  cost_A <- rnorm(n_simulations, mean = 1000, sd = 250)
+  cost_B <- rnorm(n_simulations, mean = 6000, sd = 1500)
+  # Calculate yearly costs
+  cost_old <- population_size * cost_A  # Old scenario (only Drug A)
+  cost_new <- population_size * ((1 - market_share_B) * cost_A + market_share_B * cost_B)  # New scenario (Drug A and B)
+  
+  # Calculate yearly budget impact
+  budget_impact <- cost_new - cost_old
+  
+  # Store the results for each year
+  budget_impact_per_year[[year_index]] <- budget_impact
+}
+```
+
+Budget Impact assessment and plot of the dustribution
+
+```{r c}
+
+# Summing the budget impact over the specified years
+total_budget_impact <- Reduce("+", budget_impact_per_year)
+
+# Plot the distribution of total budget impact over the 5 years
+ggplot(data.frame(total_budget_impact), aes(x = total_budget_impact)) +
+  geom_histogram(binwidth = 1000000, fill = "skyblue", color = "black") +
+  labs(title = "Monte Carlo Simulation of Budget Impact (2016-2020)",
+       x = "Total Budget Impact (NGN)",
+       y = "Frequency") +
+  theme_minimal()
+
+
+```
+
+
+The impact estimates
+
+```{r d}
+# Calculate and print overall key statistics for the 5-year period
+mean_impact <- mean(total_budget_impact)
+ci_lower <- quantile(total_budget_impact, 0.025)
+ci_upper <- quantile(total_budget_impact, 0.975)
+
+cat(sprintf("Overall Mean Budget Impact (2016-2020): NGN %.2f\n", mean_impact))
+cat(sprintf("95%% Confidence Interval: NGN %.2f to NGN %.2f\n", ci_lower, ci_upper))
+
+# Print key statistics for each year
+for (year_index in 1:length(years)) {
+  yearly_mean <- mean(budget_impact_per_year[[year_index]])
+  yearly_sd <- sd(budget_impact_per_year[[year_index]])
+  yearly_ci_lower <- quantile(budget_impact_per_year[[year_index]], 0.025)
+  yearly_ci_upper <- quantile(budget_impact_per_year[[year_index]], 0.975)
+  
+  cat(sprintf("\nYear %d Budget Impact:\n", years[year_index]))
+  cat(sprintf("  Mean: NGN %.2f\n", yearly_mean))
+  cat(sprintf("  Standard Deviation: NGN %.2f\n", yearly_sd))
+  cat(sprintf("  95%% Confidence Interval: NGN %.2f to NGN %.2f\n", yearly_ci_lower, yearly_ci_upper))
+}
+
+
+
+```
+Results:
+Year 2016 Budget Impact: Mean: NGN 2969617.09; SD: NGN 1899980.82
+Year 2017 Budget Impact: Mean: NGN 3184747.76; SD: NGN 2036246.57
+Year 2018 Budget Impact: Mean: NGN 3293329.26, SD: NGN 2088343.26
+Year 2019 Budget Impact: Mean: NGN 3482219.34;  SD: NGN 2272126.42
+Year 2020 Budget Impact: Mean: NGN 3695960.70; SD: NGN 2383510.29
+
+  
+session information
+
+```{r z}
+sessionInfo()
+
+```
